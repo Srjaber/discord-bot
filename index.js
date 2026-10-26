@@ -6,7 +6,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers // ضروري للترحيب وإعطاء الرولات التلقائية
     ]
 });
 
@@ -17,7 +17,43 @@ client.once('clientReady', () => {
     console.log(`[✔] تم تسجيل الدخول بنجاح باسم ${client.user.tag}`);
 });
 
-// أمر إرسال البنل الاحترافي بالوصف المطلوب وصورة السيرفر
+// 1. نظام الترحيب بالأعضاء الجدد ومنح الرول التلقائي (Family Dollar)
+client.on('guildMemberAdd', async member => {
+    try {
+        // البحث عن الرول المسمى Family Dollar لإعطائه للعضو الجديد تلقائياً
+        const autoRole = member.guild.roles.cache.find(r => r.name === 'Family Dollar');
+        if (autoRole) {
+            await member.roles.add(autoRole).catch(() => {});
+        }
+
+        // إرسال رسالة الترحيب في الروم/الثرد المخصص ID: 1484482042040156272
+        const welcomeChannelId = '1484482042040156272';
+        const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
+
+        if (welcomeChannel) {
+            const userAvatar = member.user.displayAvatarURL({ dynamic: true, size: 512 });
+
+            const welcomeEmbed = new EmbedBuilder()
+                .setTitle('『💲』 𝐃𝐎𝐋𝐋𝑨𝑞 • Welcome to our Family!')
+                .setDescription(
+                    `أهلاً ومرحباً بك يا مبدع <@${member.id}> في سيرفرنا!\n\n` +
+                    `💎 نحن سعداء بانضمامك إلى عائلة **『💲』𝑫𝑶𝑳𝑳𝑨𝑹**.\n` +
+                    `✨ نرجو قراءة القوانين والاستمتاع بتجربتك معنا والتوجه لقنوات الطلب والدعم متى أردت ذلك.`
+                )
+                .setColor('#ff0033') // أحمر لامع
+                .setThumbnail(userAvatar)
+                .setImage(userAvatar)
+                .setFooter({ text: `Member #${member.guild.memberCount} • Have a nice stay!`, iconURL: member.guild.iconURL() })
+                .setTimestamp();
+
+            await welcomeChannel.send({ content: `welcome <@${member.id}> 🎉`, embeds: [welcomeEmbed] });
+        }
+    } catch (error) {
+        console.error('Error in guildMemberAdd:', error);
+    }
+});
+
+// 2. أمر إرسال البنل الاحترافي للوصف وصورة السيرفر
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -25,7 +61,7 @@ client.on('messageCreate', async message => {
         const guildIcon = message.guild.iconURL({ dynamic: true });
 
         const embed = new EmbedBuilder()
-            .setTitle('『💲』 𝐃𝐎𝐋𝐋𝐀𝐑 • Official Support & Design Panel')
+            .setTitle('『💲』 𝐃𝐎𝐋𝐋𝑨𝑹 • Official Support & Design Panel')
             .setDescription(
                 '『💲』 **𝑫𝑶𝑳𝑳𝑨𝑹**\n\n' +
                 '💎 حيث تلتقي الفخامة بالإبداع، وتتحول التفاصيل إلى لمسات استثنائية من الأناقة والتميز.\n\n' +
@@ -37,9 +73,9 @@ client.on('messageCreate', async message => {
                 '💵 『💲』 **𝑫𝑶𝑳𝑳𝑨𝑹**\n' +
                 '`Luxury • Creativity • Excellence • Power`'
             )
-            .setColor('#ff0033') // أحمر لامع وقوي
+            .setColor('#ff0033')
             .setThumbnail(guildIcon)
-            .setImage('https://i.imgur.com/43F44UA.png') // صورة جمالية اختيارية
+            .setImage('https://i.imgur.com/43F44UA.png')
             .setFooter({ text: 'Jaber & DOLLAR Systems • All Rights Reserved 2026', iconURL: guildIcon });
 
         const row = new ActionRowBuilder().addComponents(
@@ -124,38 +160,60 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // استقبال البيانات من الـ Modal وإنشاء التذكرة وتوجيهها للكاتجوري المخصص
+    // استقبال البيانات من الـ Modal وإنشاء التذكرة بالصلاحيات والرولات المحددة بدقة
     if (interaction.isModalSubmit()) {
         let type = interaction.customId.replace('modal_', '');
         const name = interaction.fields.getTextInputValue('ticket_name');
         const age = interaction.fields.getTextInputValue('ticket_age');
         const reason = interaction.fields.getTextInputValue('ticket_reason');
 
-        await interaction.reply({ content: '⏳ جاري إنشاء تذكرتك وتوجيهك للقسم المختص...', ephemeral: true });
+        await interaction.reply({ content: '⏳ جاري إنشاء تذكرتك وتخصيص الصلاحيات...', ephemeral: true });
 
         const guild = interaction.guild;
         const currentTicketNumber = ticketCounter++;
         const channelName = `𝕋𝕚𝕔𝕜𝕖𝕥𝕤-${currentTicketNumber}`;
 
-        // ربط الفئات بالكاتجوريات المطلوبة بدقة
         let targetCategoryId = null;
-        if (type === 'طلب بنر') targetCategoryId = '1564261286043197581'; // استفسارات عامة سابقاً أو الكاتجوري الأول
-        else if (type === 'طلب استيكر') targetCategoryId = '1564260810883076186'; // التواصل مع الإدارة سابقاً أو الثاني
-        else if (type === 'الدعم الفني') targetCategoryId = '1564259634531930236'; // ضد إداري سابقاً أو الثالث
+        let allowedRoles = [];
+
+        // تخصيص الأيدي والكاتجوريات والرولات لكل فئة حسب طلبك
+        if (type === 'طلب بنر') {
+            targetCategoryId = '1564261286043197581'; 
+            allowedRoles = ['1564297728786305024', '1564296776553595001'];
+        } 
+        else if (type === 'طلب استيكر') {
+            targetCategoryId = '1564260810883076186'; 
+            allowedRoles = ['1564297864413319279', '1564296776553595001'];
+        } 
+        else if (type === 'الدعم الفني') {
+            targetCategoryId = '1564259634531930236'; 
+            allowedRoles = ['1564297994168303646', '1564296776553595001'];
+        }
+
+        // إعداد صلاحيات الرومات (منع الجميع + السماح لصاحب التذكرة ورولات الإدارة المحددة)
+        let permissionOverwrites = [
+            {
+                id: guild.id,
+                deny: [PermissionFlagsBits.ViewChannel],
+            },
+            {
+                id: interaction.user.id,
+                allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+            },
+        ];
+
+        // إضافة صلاحيات الرولة الأولى والثانية المتخصصة لكل فئة
+        allowedRoles.forEach(roleId => {
+            permissionOverwrites.push({
+                id: roleId,
+                allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels],
+            });
+        });
 
         const channelOptions = {
             name: channelName,
             type: ChannelType.GuildText,
-            permissionOverwrites: [
-                {
-                    id: guild.id,
-                    deny: [PermissionFlagsBits.ViewChannel],
-                },
-                {
-                    id: interaction.user.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-                },
-            ],
+            permissionOverwrites: permissionOverwrites,
         };
 
         if (targetCategoryId) {
@@ -251,3 +309,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(config.token);
+                    
