@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder } = require('discord.js');
 const config = require('./config.json');
 
 const client = new Client({
@@ -10,20 +10,23 @@ const client = new Client({
     ]
 });
 
+// متغير لعداد أرقام التذاكر
+let ticketCounter = 1;
+
 client.once('clientReady', () => {
     console.log(`[✔] تم تسجيل الدخول بنجاح باسم ${client.user.tag}`);
 });
 
-// أمر لرسالة التذاكر (يمكنك كتابة !ticket في السيرفر لإرسال القائمة)
+// أمر إرسال بانل التذاكر
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === '!ticket') {
         const embed = new EmbedBuilder()
-            .setTitle('🎫 نظام تذاكر الدعم الفني')
-            .setDescription('يرجى اختيار القسم المناسب لفتح تذكرة وسيقوم فريق الإدارة بالرد عليك في أقرب وقت.')
-            .setColor('#2b2d31')
-            .setFooter({ text: 'Jaber Tickets System' });
+            .setTitle('🎫 نظام تذاكر الدعم الفني والشكاوى')
+            .setDescription('**أهلاً بك عزيزي العضو في مركز الدعم الفني.**\n\nيرجى اختيار القسم المناسب أدناه لفتح تذكرة جديدة وسيقوم فريق الإدارة بالاستجابة لطلبك في أسرع وقت ممكن.\n\n*يرجى الالتزام بقوانين السيرفر وعدم فتح تذاكر عبثية.*')
+            .setColor('#ff0055') // لون نيون مميز وجذاب للوصف
+            .setFooter({ text: 'Jaber Tickets System • Secure Support' });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -46,30 +49,82 @@ client.on('messageCreate', async message => {
     }
 });
 
-// نظام إنشاء التذكرة عند الضغط على الأزرار
+// التعامل مع الأزرار وإظهار نموذج إدخال البيانات (Modal)
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isButton()) return;
+    if (interaction.isButton()) {
+        let ticketType = '';
+        if (interaction.customId === 'ticket_inquiries') ticketType = 'inquiries';
+        else if (interaction.customId === 'ticket_admin') ticketType = 'admin-contact';
+        else if (interaction.customId === 'ticket_against') ticketType = 'against-admin';
 
-    let categoryName = '';
-    let ticketType = '';
+        if (ticketType) {
+            const modal = new ModalBuilder()
+                .setCustomId(`modal_${ticketType}`)
+                .setTitle('نموذج تقديم معلومات التذكرة');
 
-    if (interaction.customId === 'ticket_inquiries') {
-        ticketType = 'inquiries';
-        categoryName = '🟢-inquiries';
-    } else if (interaction.customId === 'ticket_admin') {
-        ticketType = 'admin-contact';
-        categoryName = '🔴-admin-contact';
-    } else if (interaction.customId === 'ticket_against') {
-        ticketType = 'against-admin';
-        categoryName = '⚪-against-admin';
+            const nameInput = new TextInputBuilder()
+                .setCustomId('ticket_name')
+                .setLabel('الاسم ثلاثي أو المستعار')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            const ageInput = new TextInputBuilder()
+                .setCustomId('ticket_age')
+                .setLabel('العمر')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            const reasonInput = new TextInputBuilder()
+                .setCustomId('ticket_reason')
+                .setLabel('سبب فتح التذكرة بالتفصيل')
+                .setStyle(TextInputStyle.Paragraph)
+                .setRequired(true);
+
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(nameInput),
+                new ActionRowBuilder().addComponents(ageInput),
+                new ActionRowBuilder().addComponents(reasonInput)
+            );
+
+            await interaction.showModal(modal);
+        }
+
+        // زر إغلاق التذكرة
+        if (interaction.customId === 'close_ticket') {
+            await interaction.reply({ content: '🔒 جاري إغلاق التذكرة وحذف الغرفة خلال 5 ثوانٍ...', ephemeral: true });
+            
+            // إرسال لوج الإغلاق
+            const logsChannel = interaction.guild.channels.cache.find(c => c.name === 'ticket-logs');
+            if (logsChannel) {
+                const logEmbed = new EmbedBuilder()
+                    .setTitle('🔒 إغلاق تذكرة')
+                    .setDescription(`تم إغلاق التذكرة بواسطة: ${interaction.user.tag}`)
+                    .setColor('#ff0000')
+                    .setTimestamp();
+                await logsChannel.send({ embeds: [logEmbed] });
+            }
+
+            setTimeout(async () => {
+                await interaction.channel.delete().catch(() => {});
+            }, 5000);
+        }
     }
 
-    if (ticketType) {
-        await interaction.reply({ content: 'جاري إنشاء تذكرتك...', ephemeral: true });
+    // استقبال البيانات من الـ Modal وإنشاء التذكرة بالاسم المطلوب 𝕋𝕚𝕔𝕜𝕖𝕥𝕤
+    if (interaction.isModalSubmit()) {
+        let type = interaction.customId.replace('modal_', '');
+        const name = interaction.fields.getTextInputValue('ticket_name');
+        const age = interaction.fields.getTextInputValue('ticket_age');
+        const reason = interaction.fields.getTextInputValue('ticket_reason');
+
+        await interaction.reply({ content: '⏳ جاري إنشاء تذكرتك وتجهيز الغرفة...', ephemeral: true });
 
         const guild = interaction.guild;
+        const currentTicketNumber = ticketCounter++;
+        const channelName = `𝕋𝕚𝕔𝕜𝕖𝕥𝕤-${currentTicketNumber}`;
+
         const channel = await guild.channels.create({
-            name: `ticket-${interaction.user.username}`,
+            name: channelName,
             type: ChannelType.GuildText,
             permissionOverwrites: [
                 {
@@ -86,26 +141,41 @@ client.on('interactionCreate', async interaction => {
         const closeRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('close_ticket')
-                .setLabel('إغلاق التذكرة')
+                .setLabel('إغلاق التذكرة 🔒')
                 .setStyle(ButtonStyle.Danger)
         );
 
         const ticketEmbed = new EmbedBuilder()
-            .setTitle(`تذكرة جديدة: ${ticketType}`)
-            .setDescription(`مرحباً ${interaction.user},\nتم فتح هذه التذكرة بواسطة قسم **${ticketType}**.\nيرجى كتابة مشكلتك أو استفسارك وسيقوم المختصون بالرد عليك قريباً.`)
-            .setColor('#0099ff');
+            .setTitle(`🎫 تفاصيل تذكرة جديدة (#${currentTicketNumber})`)
+            .setDescription(`مرحباً بك <@${interaction.user.id}> في قسم **${type}**.\nلقد تم تسجيل بياناتك بنجاح وسيتولى الفريق متابعة مشكلتك.`)
+            .addFields(
+                { name: '👤 الاسم:', value: name, inline: true },
+                { name: '📅 العمر:', value: age, inline: true },
+                { name: '📝 سبب فتح التذكرة:', value: reason, inline: false }
+            )
+            .setColor('#00ffcc')
+            .setTimestamp();
 
         await channel.send({ content: `<@${interaction.user.id}>`, embeds: [ticketEmbed], components: [closeRow] });
-    }
 
-    // زر إغلاق التذكرة
-    if (interaction.customId === 'close_ticket') {
-        await interaction.reply('جاري إغلاق الحذف وحذف الروم خلال 5 ثوانٍ...');
-        setTimeout(() => {
-            interaction.channel.delete().catch(() => {});
-        }, 5000);
+        // إرسال اللوج في روم الـ logs إن وجد
+        const logsChannel = guild.channels.cache.find(c => c.name === 'ticket-logs');
+        if (logsChannel) {
+            const logEmbed = new EmbedBuilder()
+                .setTitle('📂 فتح تذكرة جديدة')
+                .addFields(
+                    { name: 'صاحب التذكرة:', value: `${interaction.user.tag}`, inline: true },
+                    { name: 'رقم التذكرة:', value: `#${currentTicketNumber}`, inline: true },
+                    { name: 'القسم:', value: type, inline: true },
+                    { name: 'الاسم:', value: name, inline: true },
+                    { name: 'العمر:', value: age, inline: true },
+                    { name: 'السبب:', value: reason, inline: false }
+                )
+                .setColor('#0099ff')
+                .setTimestamp();
+            await logsChannel.send({ embeds: [logEmbed] });
+        }
     }
 });
 
 client.login(config.token);
-            
