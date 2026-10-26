@@ -6,27 +6,30 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers // ضروري للترحيب وإعطاء الرولات التلقائية
+        GatewayIntentBits.GuildMembers
     ]
 });
 
 let ticketCounter = 1;
 const activeTickets = new Map();
 
+// ID الرول التلقائي للجميع والجدد
+const AUTO_ROLE_ID = '1564303060623167568';
+
 client.once('clientReady', () => {
     console.log(`[✔] تم تسجيل الدخول بنجاح باسم ${client.user.tag}`);
 });
 
-// 1. نظام الترحيب بالأعضاء الجدد ومنح الرول التلقائي (Family Dollar)
+// 1. منح الرول التلقائي للأعضاء والترحيب
 client.on('guildMemberAdd', async member => {
     try {
-        // البحث عن الرول المسمى Family Dollar لإعطائه للعضو الجديد تلقائياً
-        const autoRole = member.guild.roles.cache.find(r => r.name === 'Family Dollar');
+        // إعطاء الرول التلقائي بالأيدي
+        const autoRole = member.guild.roles.cache.get(AUTO_ROLE_ID);
         if (autoRole) {
-            await member.roles.add(autoRole).catch(() => {});
+            await member.roles.add(autoRole).catch(console.error);
         }
 
-        // إرسال رسالة الترحيب في الروم/الثرد المخصص ID: 1484482042040156272
+        // إرسال رسالة الترحيب
         const welcomeChannelId = '1484482042040156272';
         const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
 
@@ -40,7 +43,7 @@ client.on('guildMemberAdd', async member => {
                     `💎 نحن سعداء بانضمامك إلى عائلة **『💲』𝑫𝑶𝑳𝑳𝑨𝑹**.\n` +
                     `✨ نرجو قراءة القوانين والاستمتاع بتجربتك معنا والتوجه لقنوات الطلب والدعم متى أردت ذلك.`
                 )
-                .setColor('#ff0033') // أحمر لامع
+                .setColor('#ff0033')
                 .setThumbnail(userAvatar)
                 .setImage(userAvatar)
                 .setFooter({ text: `Member #${member.guild.memberCount} • Have a nice stay!`, iconURL: member.guild.iconURL() })
@@ -53,7 +56,7 @@ client.on('guildMemberAdd', async member => {
     }
 });
 
-// 2. أمر إرسال البنل الاحترافي للوصف وصورة السيرفر
+// 2. أمر إنشاء بنل التذاكر
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
@@ -82,24 +85,24 @@ client.on('messageCreate', async message => {
             new ButtonBuilder()
                 .setCustomId('ticket_banner')
                 .setLabel('طلب بنر')
-                .setStyle(ButtonStyle.Danger), // أحمر لامع
+                .setStyle(ButtonStyle.Danger),
 
             new ButtonBuilder()
                 .setCustomId('ticket_sticker')
                 .setLabel('طلب استيكر')
-                .setStyle(ButtonStyle.Success), // أخضر
+                .setStyle(ButtonStyle.Success),
 
             new ButtonBuilder()
                 .setCustomId('ticket_support')
                 .setLabel('الدعم الفني')
-                .setStyle(ButtonStyle.Secondary) // رمادي
+                .setStyle(ButtonStyle.Secondary)
         );
 
         await message.channel.send({ embeds: [embed], components: [row] });
     }
 });
 
-// التعامل مع الأزرار وإظهار نموذج إدخال البيانات (Modal)
+// التعامل مع التفاعلات (Buttons, Modals, Select Menus)
 client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         let ticketType = '';
@@ -139,28 +142,28 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // زر إغلاق التذكرة وإظهار قائمة التقييم للجميع
+        // زر إغلاق التذكرة
         if (interaction.customId === 'close_ticket') {
             const ratingMenu = new StringSelectMenuBuilder()
                 .setCustomId('rate_admin')
-                .setPlaceholder('⭐ اختر تقييمك لأداء الإداري هنا...')
+                .setPlaceholder('⭐ اختر تقييمك لأداء الخدمة والإدارة...')
                 .addOptions([
-                    { label: '⭐⭐⭐⭐⭐ - ممتاز جداً (5 نجوم)', value: '5_stars' },
-                    { label: '⭐⭐⭐⭐ - جيد جداً (4 نجوم)', value: '4_stars' },
-                    { label: '⭐⭐⭐ - جيد (3 نجوم)', value: '3_stars' },
-                    { label: '⭐⭐ - مقبولة (نجمتان)', value: '2_stars' },
-                    { label: '⭐ - سيء (نجمة واحدة)', value: '1_star' }
+                    { label: '⭐⭐⭐⭐⭐ - ممتاز جداً (5/5)', value: '⭐⭐⭐⭐⭐ (ممتاز جداً)' },
+                    { label: '⭐⭐⭐⭐ - جيد جداً (4/5)', value: '⭐⭐⭐⭐ (جيد جداً)' },
+                    { label: '⭐⭐⭐ - جيد (3/5)', value: '⭐⭐⭐ (جيد)' },
+                    { label: '⭐⭐ - مقبول (2/5)', value: '⭐⭐ (مقبول)' },
+                    { label: '⭐ - سيء (1/5)', value: '⭐ (سيء)' }
                 ]);
 
             const row = new ActionRowBuilder().addComponents(ratingMenu);
             await interaction.update({ 
-                content: `🔒 **طلب الإغلاق بواسطة:** <@${interaction.user.id}>\n🌟 **الرجاء من الإداري اختيار تقييم الخدمة أدناه قبل حذف الغرفة:**`, 
+                content: `🔒 **طلب الإغلاق بواسطة:** <@${interaction.user.id}>\n🌟 **الرجاء اختيار تقييم الخدمة أدناه قبل حذف الغرفة:**`, 
                 components: [row] 
             });
         }
     }
 
-    // استقبال البيانات من الـ Modal وإنشاء التذكرة بالصلاحيات والرولات المحددة بدقة
+    // استقبال نموذج التذكرة وإنشائها
     if (interaction.isModalSubmit()) {
         let type = interaction.customId.replace('modal_', '');
         const name = interaction.fields.getTextInputValue('ticket_name');
@@ -176,21 +179,20 @@ client.on('interactionCreate', async interaction => {
         let targetCategoryId = null;
         let allowedRoles = [];
 
-        // تخصيص الأيدي والكاتجوريات والرولات لكل فئة حسب طلبك
+        // تخصيص الرولات المحددة بدقة لكل فئة
         if (type === 'طلب بنر') {
             targetCategoryId = '1564261286043197581'; 
-            allowedRoles = ['1564297728786305024', '1564296776553595001'];
+            allowedRoles = ['1564296776553595001', '1564297728786305024'];
         } 
         else if (type === 'طلب استيكر') {
             targetCategoryId = '1564260810883076186'; 
-            allowedRoles = ['1564297864413319279', '1564296776553595001'];
+            allowedRoles = ['1564296776553595001', '1564297864413319279'];
         } 
         else if (type === 'الدعم الفني') {
             targetCategoryId = '1564259634531930236'; 
             allowedRoles = ['1564297994168303646', '1564296776553595001'];
         }
 
-        // إعداد صلاحيات الرومات (منع الجميع + السماح لصاحب التذكرة ورولات الإدارة المحددة)
         let permissionOverwrites = [
             {
                 id: guild.id,
@@ -202,7 +204,6 @@ client.on('interactionCreate', async interaction => {
             },
         ];
 
-        // إضافة صلاحيات الرولة الأولى والثانية المتخصصة لكل فئة
         allowedRoles.forEach(roleId => {
             permissionOverwrites.push({
                 id: roleId,
@@ -229,6 +230,10 @@ client.on('interactionCreate', async interaction => {
                 .setStyle(ButtonStyle.Danger)
         );
 
+        // إعداد المنشنات (العضو + رولات الفئة)
+        const roleMentions = allowedRoles.map(rId => `<@&${rId}>`).join(' ');
+        const fullMentionText = `<@${interaction.user.id}> ${roleMentions}`;
+
         const ticketEmbed = new EmbedBuilder()
             .setTitle(`『💲』 𝐃𝐎𝐋𝐋𝑨𝑹 • تذكرة جديدة (#${currentTicketNumber})`)
             .setDescription(`مرحباً بك <@${interaction.user.id}> في قسم **${type}**.\nلقد تم تسجيل بياناتك بنجاح وسيتولى الفريق المختص متابعة طلبك بأعلى احترافية.`)
@@ -240,7 +245,8 @@ client.on('interactionCreate', async interaction => {
             .setColor('#ff0033')
             .setTimestamp();
 
-        await channel.send({ content: `<@${interaction.user.id}>`, embeds: [ticketEmbed], components: [closeRow] });
+        // إرسال الرسالة مع المنشن المتكامل
+        await channel.send({ content: fullMentionText, embeds: [ticketEmbed], components: [closeRow] });
 
         activeTickets.set(channel.id, {
             user: interaction.user,
@@ -251,19 +257,19 @@ client.on('interactionCreate', async interaction => {
             reason: reason
         });
 
-        // إرسال اللوج في روم ticket-logs
+        // سجلات اللوج عند الفتح
         const logsChannel = guild.channels.cache.find(c => c.name === 'ticket-logs');
         if (logsChannel) {
             const logEmbed = new EmbedBuilder()
                 .setTitle('📂 [فتح تذكرة جديدة]')
                 .setDescription(`تم فتح تذكرة جديدة بواسطة العضو: <@${interaction.user.id}>`)
                 .addFields(
-                    { name: 'صاحب التذكرة:', value: `${interaction.user.tag}`, inline: true },
-                    { name: 'رقم التذكرة:', value: `#${currentTicketNumber}`, inline: true },
-                    { name: 'القسم:', value: type, inline: true },
-                    { name: 'الاسم:', value: name, inline: true },
-                    { name: 'العمر:', value: age, inline: true },
-                    { name: 'السبب:', value: reason, inline: false }
+                    { name: 'صاحب التذكرة', value: `<@${interaction.user.id}>`, inline: true },
+                    { name: 'رقم التذكرة', value: `#${currentTicketNumber}`, inline: true },
+                    { name: 'القسم', value: type, inline: true },
+                    { name: 'الاسم', value: name, inline: true },
+                    { name: 'العمر', value: age, inline: true },
+                    { name: 'السبب', value: reason, inline: false }
                 )
                 .setColor('#00ffcc')
                 .setTimestamp();
@@ -271,30 +277,31 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // استقبال التقييم وحذف الغرفة مع إرسال اللوج الختامي
+    // التقييم الفخم وإغلاق التذكرة
     if (interaction.isStringSelectMenu() && interaction.customId === 'rate_admin') {
         const rating = interaction.values[0];
         const ticketData = activeTickets.get(interaction.channel.id);
         const guild = interaction.guild;
 
-        await interaction.update({ content: `✅ **تم استلام التقييم بنجاح (${rating}). جاري حذف الغرفة وحفظ السجلات النهائية...**`, components: [] });
+        await interaction.update({ content: `✅ **تم استلام التقييم بنجاح. جاري حفظ السجلات وإغلاق الغرفة...**`, components: [] });
 
         const logsChannel = guild.channels.cache.find(c => c.name === 'ticket-logs');
         if (logsChannel && ticketData) {
             const closeLogEmbed = new EmbedBuilder()
-                .setTitle('🔒 [إغلاق تذكرة وتقييم نهائي]')
-                .setDescription(`تم إغلاق التذكرة وإتمام الطلب بواسطة الإداري: <@${interaction.user.id}>`)
+                .setTitle('🔒 『💲』 𝐃𝐎𝐋𝐋𝑨𝑹 • تقييم وسجل إغلاق التذكرة')
+                .setDescription(`تم إغلاق التذكرة بنجاح وتقييم مستوى الخدمة والإدارة.`)
                 .addFields(
-                    { name: 'صاحب التذكرة:', value: `<@${ticketData.user.id}>`, inline: true },
-                    { name: 'الإداري المسؤول:', value: `<@${interaction.user.id}>`, inline: true },
-                    { name: 'رقم التذكرة:', value: `#${ticketData.ticketNumber}`, inline: true },
-                    { name: 'القسم:', value: ticketData.type, inline: true },
-                    { name: 'الاسم المسجل:', value: ticketData.name, inline: true },
-                    { name: 'العمر:', value: ticketData.age, inline: true },
-                    { name: 'الطلب الأصلي:', value: ticketData.reason, inline: false },
-                    { name: '⭐ تقييم الإداري:', value: rating, inline: true }
+                    { name: '👤 صاحب التذكرة', value: `<@${ticketData.user.id}>`, inline: true },
+                    { name: '🛠️ الإداري المغلق', value: `<@${interaction.user.id}>`, inline: true },
+                    { name: '🎫 رقم التذكرة', value: `#${ticketData.ticketNumber}`, inline: true },
+                    { name: '📁 القسم', value: ticketData.type, inline: true },
+                    { name: '📝 الاسم المسجل', value: ticketData.name, inline: true },
+                    { name: '📅 العمر', value: ticketData.age, inline: true },
+                    { name: '⭐ تقييم الخدمة', value: `**${rating}**`, inline: true },
+                    { name: '💬 تفاصيل الطلب', value: ticketData.reason, inline: false }
                 )
                 .setColor('#ff0033')
+                .setFooter({ text: 'DOLLAR Support System', iconURL: guild.iconURL() })
                 .setTimestamp();
 
             await logsChannel.send({ embeds: [closeLogEmbed] });
@@ -304,9 +311,9 @@ client.on('interactionCreate', async interaction => {
 
         setTimeout(async () => {
             await interaction.channel.delete().catch(() => {});
-        }, 4000);
+        }, 3000);
     }
 });
 
 client.login(config.token);
-                    
+            
