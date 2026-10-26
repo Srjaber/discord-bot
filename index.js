@@ -23,13 +23,11 @@ client.once('clientReady', () => {
 // 1. منح الرول التلقائي للأعضاء والترحيب
 client.on('guildMemberAdd', async member => {
     try {
-        // إعطاء الرول التلقائي بالأيدي
         const autoRole = member.guild.roles.cache.get(AUTO_ROLE_ID);
         if (autoRole) {
             await member.roles.add(autoRole).catch(console.error);
         }
 
-        // إرسال رسالة الترحيب
         const welcomeChannelId = '1484482042040156272';
         const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
 
@@ -56,10 +54,11 @@ client.on('guildMemberAdd', async member => {
     }
 });
 
-// 2. أمر إنشاء بنل التذاكر
+// 2. أمر إنشاء بنل التذاكر وأمر القوانين
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
+    // أمر البنل
     if (message.content === '!ticket') {
         const guildIcon = message.guild.iconURL({ dynamic: true });
 
@@ -100,9 +99,80 @@ client.on('messageCreate', async message => {
 
         await message.channel.send({ embeds: [embed], components: [row] });
     }
+
+    // أمر القوانين إرسالها في الثرد المخصص
+    if (message.content === '!rules') {
+        const targetThreadId = '1564344133643014295';
+        const targetChannel = await client.channels.fetch(targetThreadId).catch(() => null);
+
+        if (!targetChannel) {
+            return message.reply('❌ عذراً، لم يتم العثور على الثرد المخصص للقوانين بالآي دي المحدد.');
+        }
+
+        const guildIcon = message.guild.iconURL({ dynamic: true });
+
+        const rulesEmbed = new EmbedBuilder()
+            .setTitle('『💲』 𝐃𝐎𝐋𝐋𝑨𝑞 • Server Rules & Guidelines')
+            .setDescription(
+                '🔹 **أهلاً بك في قوانين عائلة DOLLAR الرسمية!**\n' +
+                'حرصاً منا على استمرار المتعة والإبداع والحفاظ على بيئة آمنة وراقية، يرجى الالتزام بالآتي:\n\n' +
+                '📌 **1. الاحترام المتبادل:**\n' +
+                '> يمنع منعاً باتاً السب، الشتم، الإهانة، أو افتعال المشاكل مع أي عضو أو إداري.\n\n' +
+                '🚫 **2. ممنوع نشر الروابط:**\n' +
+                '> يُحظر منعاً باتاً نشر أي روابط خارجية، سيرفرات أخرى، أو إعلانات لتجنب العقوبة الفورية (كتم 3 أيام).\n\n' +
+                '💬 **3. استخدام الرومات المخصصة:**\n' +
+                '> يرجى وضع كل رسالة في مكانها الصحيح وعدم الإزعاج في رومات الدعم والتذاكر.\n\n' +
+                '🖼️ **4. النشر والإزعاج (Spam):**\n' +
+                '> يمنع إرسال الصور أو الحروف المتكررة بشكل مزعج (Spam) في الشات العام.\n\n' +
+                '✨ **الالتزام بالقوانين يعكس رقيك وأخلاقك، ومخالفتها تعرضك للعقوبات الإدارية فوراً.**'
+            )
+            .setColor('#ff0033')
+            .setThumbnail(guildIcon)
+            .setImage('https://i.imgur.com/43F44UA.png')
+            .setFooter({ text: 'DOLLAR Security & Moderation Systems', iconURL: guildIcon })
+            .setTimestamp();
+
+        await targetChannel.send({ embeds: [rulesEmbed] });
+        await message.reply({ content: '✅ تم إرسال القوانين بنجاح داخل الثرد المخصص!', ephemeral: true });
+    }
 });
 
-// التعامل مع التفاعلات (Buttons, Modals, Select Menus)
+// 3. نظام الحماية والأمان (منع الروابط + كتم 3 أيام + منشن العضو بالآي دي والسبب)
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.guild) return;
+
+    const content = message.content.toLowerCase();
+    const urlPattern = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|(discord\.gg\/[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
+
+    if (urlPattern.test(content)) {
+        try {
+            await message.delete().catch(() => {});
+
+            const member = message.member;
+            if (!member) return;
+
+            const muteDuration = 3 * 24 * 60 * 60 * 1000; // 3 أيام
+            await member.timeout(muteDuration, 'إرسال روابط ممنوعة داخل السيرفر');
+
+            const warningMessage = await message.channel.send(
+                `⚠️ **تنبيه إداري وعقوبة حظر مؤقت!**\n` +
+                `👤 **العضو المخالف:** <@${message.author.id}>\n` +
+                `🆔 **آي دي العضو:** \`${message.author.id}\`\n` +
+                `🚨 **اسم المخالفة:** إرسال روابط خارجية / دعائية ممنوعة.\n` +
+                `⏳ **العقوبة:** تم كتم العضو (Timeout) لمدة **3 أيام** وحذف الرسالة.`
+            );
+
+            setTimeout(() => {
+                warningMessage.delete().catch(() => {});
+            }, 10000);
+
+        } catch (error) {
+            console.error('خطأ في نظام الحماية:', error);
+        }
+    }
+});
+
+// 4. التعامل مع التذاكر والتقييمات
 client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         let ticketType = '';
@@ -142,7 +212,6 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // زر إغلاق التذكرة
         if (interaction.customId === 'close_ticket') {
             const ratingMenu = new StringSelectMenuBuilder()
                 .setCustomId('rate_admin')
@@ -163,7 +232,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // استقبال نموذج التذكرة وإنشائها
     if (interaction.isModalSubmit()) {
         let type = interaction.customId.replace('modal_', '');
         const name = interaction.fields.getTextInputValue('ticket_name');
@@ -179,7 +247,6 @@ client.on('interactionCreate', async interaction => {
         let targetCategoryId = null;
         let allowedRoles = [];
 
-        // تخصيص الرولات المحددة بدقة لكل فئة
         if (type === 'طلب بنر') {
             targetCategoryId = '1564261286043197581'; 
             allowedRoles = ['1564296776553595001', '1564297728786305024'];
@@ -230,7 +297,6 @@ client.on('interactionCreate', async interaction => {
                 .setStyle(ButtonStyle.Danger)
         );
 
-        // إعداد المنشنات (العضو + رولات الفئة)
         const roleMentions = allowedRoles.map(rId => `<@&${rId}>`).join(' ');
         const fullMentionText = `<@${interaction.user.id}> ${roleMentions}`;
 
@@ -245,7 +311,6 @@ client.on('interactionCreate', async interaction => {
             .setColor('#ff0033')
             .setTimestamp();
 
-        // إرسال الرسالة مع المنشن المتكامل
         await channel.send({ content: fullMentionText, embeds: [ticketEmbed], components: [closeRow] });
 
         activeTickets.set(channel.id, {
@@ -257,7 +322,6 @@ client.on('interactionCreate', async interaction => {
             reason: reason
         });
 
-        // سجلات اللوج عند الفتح
         const logsChannel = guild.channels.cache.find(c => c.name === 'ticket-logs');
         if (logsChannel) {
             const logEmbed = new EmbedBuilder()
@@ -277,7 +341,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // التقييم الفخم وإغلاق التذكرة
     if (interaction.isStringSelectMenu() && interaction.customId === 'rate_admin') {
         const rating = interaction.values[0];
         const ticketData = activeTickets.get(interaction.channel.id);
@@ -316,4 +379,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(config.token);
-            
+                    
