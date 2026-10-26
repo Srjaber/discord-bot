@@ -11,40 +11,51 @@ const client = new Client({
 });
 
 let ticketCounter = 1;
-
-// تخزين بيانات التذاكر النشطة مؤقتاً للوجات والتقييم
 const activeTickets = new Map();
 
 client.once('clientReady', () => {
     console.log(`[✔] تم تسجيل الدخول بنجاح باسم ${client.user.tag}`);
 });
 
-// أمر إرسال بانل التذاكر الاحترافي باللون الأحمر اللامع
+// أمر إرسال البنل الاحترافي بالوصف المطلوب وصورة السيرفر
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === '!ticket') {
+        const guildIcon = message.guild.iconURL({ dynamic: true });
+
         const embed = new EmbedBuilder()
-            .setTitle('🚨 مركز الدعم الفني والشكاوى الرسمي 🚨')
-            .setDescription('**أهلاً بك عزيزي العضو في نظام التذاكر المتطور.**\n\nنحن هنا لمساعدتك وحل جميع مشاكلكم واسترعاء انتباه الإدارة بأقصى سرعة واحترافية ممكنة.\n\n> 📌 **يرجى اختيار القسم المناسب بعناية تامة من الأزرار أدناه لفتح تذكرة جديدة:**\n> • **استفسارات عامة:** للإجابة عن أسئلتك العامة.\n> • **التواصل مع الإدارة:** لأمور الشراكات والتقديمات والإدارة.\n> • **ضد إداري:** لتقديم شكوى رسمية بحق أي إداري.\n\n⚠️ *تحذير: فتح تذاكر وهمية او عبثية يعرضك للعقوبات داخل السيرفر.*')
+            .setTitle('『💲』 𝐃𝐎𝐋𝐋𝐀𝐑 • Official Support & Design Panel')
+            .setDescription(
+                '『💲』 **𝑫𝑶𝑳𝑳𝑨𝑹**\n\n' +
+                '💎 حيث تلتقي الفخامة بالإبداع، وتتحول التفاصيل إلى لمسات استثنائية من الأناقة والتميز.\n\n' +
+                '🖼️ من البنرات الفاخرة وصور البروفايل المميزة، إلى الاستيكرات الإبداعية والتصاميم الحصرية، نهتم بكل تفصيلة لنمنحك هوية متكاملة تعكس ذوقك وشخصيتك.\n\n' +
+                '✨ هدفنا أن نجعل كل تصميم يحمل طابعًا خاصًا، وكل استيكر يضيف لمسة من الإبداع، وكل بنر يعكس مستوى مختلفًا من الرقي والفخامة.\n\n' +
+                '🖤 **DOLLAR** ليست مجرد تصاميم، بل عالم من الأناقة والإبداع والتميز، حيث تتحدث التفاصيل عن نفسها.\n\n' +
+                '🔴 **قسم الإبداع والتميز البصري:**\n' +
+                '> *نحن نضمن لك جودة خارقة، وتصاميم تحبس الأنفاس، ودقة لا مثيل لها في كل بكسل لتتألق بين الجميع بلا منازع!*\n\n' +
+                '💵 『💲』 **𝑫𝑶𝑳𝑳𝑨𝑹**\n' +
+                '`Luxury • Creativity • Excellence • Power`'
+            )
             .setColor('#ff0033') // أحمر لامع وقوي
-            .setImage('https://i.imgur.com/43F44UA.png') // صورة جمالية اختيارية أو يمكن حذفها
-            .setFooter({ text: 'Jaber Tickets System • All Rights Reserved 2026', iconURL: message.guild.iconURL() });
+            .setThumbnail(guildIcon)
+            .setImage('https://i.imgur.com/43F44UA.png') // صورة جمالية اختيارية
+            .setFooter({ text: 'Jaber & DOLLAR Systems • All Rights Reserved 2026', iconURL: guildIcon });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('ticket_inquiries')
-                .setLabel('استفسارات عامة')
+                .setCustomId('ticket_banner')
+                .setLabel('طلب بنر')
+                .setStyle(ButtonStyle.Danger), // أحمر لامع
+
+            new ButtonBuilder()
+                .setCustomId('ticket_sticker')
+                .setLabel('طلب استيكر')
                 .setStyle(ButtonStyle.Success), // أخضر
 
             new ButtonBuilder()
-                .setCustomId('ticket_admin')
-                .setLabel('التواصل مع الإدارة')
-                .setStyle(ButtonStyle.Danger), // أحمر
-
-            new ButtonBuilder()
-                .setCustomId('ticket_against')
-                .setLabel('شكوى ضد إداري')
+                .setCustomId('ticket_support')
+                .setLabel('الدعم الفني')
                 .setStyle(ButtonStyle.Secondary) // رمادي
         );
 
@@ -56,14 +67,14 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
         let ticketType = '';
-        if (interaction.customId === 'ticket_inquiries') ticketType = 'Inquiries';
-        else if (interaction.customId === 'ticket_admin') ticketType = 'Admin Contact';
-        else if (interaction.customId === 'ticket_against') ticketType = 'Against Admin';
+        if (interaction.customId === 'ticket_banner') ticketType = 'طلب بنر';
+        else if (interaction.customId === 'ticket_sticker') ticketType = 'طلب استيكر';
+        else if (interaction.customId === 'ticket_support') ticketType = 'الدعم الفني';
 
         if (ticketType) {
             const modal = new ModalBuilder()
                 .setCustomId(`modal_${ticketType}`)
-                .setTitle('نموذج تقديم معلومات التذكرة');
+                .setTitle(`نموذج ${ticketType}`);
 
             const nameInput = new TextInputBuilder()
                 .setCustomId('ticket_name')
@@ -79,7 +90,7 @@ client.on('interactionCreate', async interaction => {
 
             const reasonInput = new TextInputBuilder()
                 .setCustomId('ticket_reason')
-                .setLabel('سبب فتح التذكرة بالتفصيل')
+                .setLabel('تفاصيل الطلب أو سبب فتح التذكرة')
                 .setStyle(TextInputStyle.Paragraph)
                 .setRequired(true);
 
@@ -92,7 +103,7 @@ client.on('interactionCreate', async interaction => {
             await interaction.showModal(modal);
         }
 
-        // مرحلة طلب التقييم عند الضغط على إغلاق التذكرة
+        // زر إغلاق التذكرة وإظهار قائمة التقييم للجميع
         if (interaction.customId === 'close_ticket') {
             const ratingMenu = new StringSelectMenuBuilder()
                 .setCustomId('rate_admin')
@@ -106,11 +117,14 @@ client.on('interactionCreate', async interaction => {
                 ]);
 
             const row = new ActionRowBuilder().addComponents(ratingMenu);
-            await interaction.reply({ content: '🌟 **شكراً لاستخدامك نظام التذاكر.** نرجو تقييم الخدمة المقدمة من الإداري قبل إغلاق الغرفة نهائياً:', components: [row], ephemeral: true });
+            await interaction.update({ 
+                content: `🔒 **طلب الإغلاق بواسطة:** <@${interaction.user.id}>\n🌟 **الرجاء من الإداري اختيار تقييم الخدمة أدناه قبل حذف الغرفة:**`, 
+                components: [row] 
+            });
         }
     }
 
-    // استقبال البيانات من الـ Modal وإنشاء التذكرة داخل الكاتجوري المخصص
+    // استقبال البيانات من الـ Modal وإنشاء التذكرة وتوجيهها للكاتجوري المخصص
     if (interaction.isModalSubmit()) {
         let type = interaction.customId.replace('modal_', '');
         const name = interaction.fields.getTextInputValue('ticket_name');
@@ -123,11 +137,11 @@ client.on('interactionCreate', async interaction => {
         const currentTicketNumber = ticketCounter++;
         const channelName = `𝕋𝕚𝕔𝕜𝕖𝕥𝕤-${currentTicketNumber}`;
 
-        // تحديد الـ Category ID حسب القسم المطلوب
+        // ربط الفئات بالكاتجوريات المطلوبة بدقة
         let targetCategoryId = null;
-        if (type === 'Inquiries') targetCategoryId = '1564261286043197581';
-        else if (type === 'Admin Contact') targetCategoryId = '1564260810883076186';
-        else if (type === 'Against Admin') targetCategoryId = '1564259634531930236';
+        if (type === 'طلب بنر') targetCategoryId = '1564261286043197581'; // استفسارات عامة سابقاً أو الكاتجوري الأول
+        else if (type === 'طلب استيكر') targetCategoryId = '1564260810883076186'; // التواصل مع الإدارة سابقاً أو الثاني
+        else if (type === 'الدعم الفني') targetCategoryId = '1564259634531930236'; // ضد إداري سابقاً أو الثالث
 
         const channelOptions = {
             name: channelName,
@@ -158,30 +172,28 @@ client.on('interactionCreate', async interaction => {
         );
 
         const ticketEmbed = new EmbedBuilder()
-            .setTitle(`🎫 تفاصيل تذكرة جديدة (#${currentTicketNumber})`)
-            .setDescription(`مرحباً بك <@${interaction.user.id}> في قسم **${type}**.\nلقد تم تسجيل بياناتك بنجاح وسيتولى الفريق المختص متابعة مشكلتك قريباً.`)
+            .setTitle(`『💲』 𝐃𝐎𝐋𝐋𝑨𝑹 • تذكرة جديدة (#${currentTicketNumber})`)
+            .setDescription(`مرحباً بك <@${interaction.user.id}> في قسم **${type}**.\nلقد تم تسجيل بياناتك بنجاح وسيتولى الفريق المختص متابعة طلبك بأعلى احترافية.`)
             .addFields(
                 { name: '👤 الاسم:', value: name, inline: true },
                 { name: '📅 العمر:', value: age, inline: true },
-                { name: '📝 سبب فتح التذكرة:', value: reason, inline: false }
+                { name: '📝 تفاصيل الطلب:', value: reason, inline: false }
             )
-            .setColor('#ff0055')
+            .setColor('#ff0033')
             .setTimestamp();
 
-        const sentMessage = await channel.send({ content: `<@${interaction.user.id}>`, embeds: [ticketEmbed], components: [closeRow] });
+        await channel.send({ content: `<@${interaction.user.id}>`, embeds: [ticketEmbed], components: [closeRow] });
 
-        // حفظ بيانات التذكرة النشطة للوجات والتقييم لاحقاً
         activeTickets.set(channel.id, {
             user: interaction.user,
             ticketNumber: currentTicketNumber,
             type: type,
             name: name,
             age: age,
-            reason: reason,
-            embed: ticketEmbed
+            reason: reason
         });
 
-        // إرسال اللوج الأصلي والمطابق في روم الـ logs مع منشن صاحب التذكرة
+        // إرسال اللوج في روم ticket-logs
         const logsChannel = guild.channels.cache.find(c => c.name === 'ticket-logs');
         if (logsChannel) {
             const logEmbed = new EmbedBuilder()
@@ -201,27 +213,30 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // استقبال تقييم الإداري وإتمام الإغلاق والحذف مع اللوج النهائي
+    // استقبال التقييم وحذف الغرفة مع إرسال اللوج الختامي
     if (interaction.isStringSelectMenu() && interaction.customId === 'rate_admin') {
         const rating = interaction.values[0];
         const ticketData = activeTickets.get(interaction.channel.id);
         const guild = interaction.guild;
 
-        await interaction.update({ content: `✅ **شكراً لك! تم تسجيل تقييمك بنجاح (${rating}). جاري حذف الغرفة وكتابة السجلات...**`, components: [] });
+        await interaction.update({ content: `✅ **تم استلام التقييم بنجاح (${rating}). جاري حذف الغرفة وحفظ السجلات النهائية...**`, components: [] });
 
         const logsChannel = guild.channels.cache.find(c => c.name === 'ticket-logs');
         if (logsChannel && ticketData) {
             const closeLogEmbed = new EmbedBuilder()
-                .setTitle('🔒 [إغلاق تذكرة وتقييم]')
-                .setDescription(`تم إغلاق التذكرة بواسطة الإداري: <@${interaction.user.id}>`)
+                .setTitle('🔒 [إغلاق تذكرة وتقييم نهائي]')
+                .setDescription(`تم إغلاق التذكرة وإتمام الطلب بواسطة الإداري: <@${interaction.user.id}>`)
                 .addFields(
-                    { name: 'صاحب التذكرة الأصلي:', value: `<@${ticketData.user.id}>`, inline: true },
-                    { name: 'الإداري المستلم/المغلق:', value: `<@${interaction.user.id}>`, inline: true },
+                    { name: 'صاحب التذكرة:', value: `<@${ticketData.user.id}>`, inline: true },
+                    { name: 'الإداري المسؤول:', value: `<@${interaction.user.id}>`, inline: true },
                     { name: 'رقم التذكرة:', value: `#${ticketData.ticketNumber}`, inline: true },
                     { name: 'القسم:', value: ticketData.type, inline: true },
-                    { name: 'التقييم المستلم:', value: rating, inline: true }
+                    { name: 'الاسم المسجل:', value: ticketData.name, inline: true },
+                    { name: 'العمر:', value: ticketData.age, inline: true },
+                    { name: 'الطلب الأصلي:', value: ticketData.reason, inline: false },
+                    { name: '⭐ تقييم الإداري:', value: rating, inline: true }
                 )
-                .setColor('#ff0000')
+                .setColor('#ff0033')
                 .setTimestamp();
 
             await logsChannel.send({ embeds: [closeLogEmbed] });
@@ -236,4 +251,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(config.token);
-            
